@@ -1,0 +1,15 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+data/raw/*
+data/clean/*
+data/app.db
+!data/raw/.gitkeep
+!data/clean/.gitkeep
+*.docx
+.DS_Store
+
