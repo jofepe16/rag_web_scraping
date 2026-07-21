@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Asistente BBVA</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="layout">
+    <aside class="sidebar">
+      <div>
+        <p class="eyebrow">Conocimiento institucional</p>
+        <h1>Asistente BBVA</h1>
+        <p class="muted">Respuestas basadas en contenido público del sitio web.</p>
+      </div>
+      <button id="new-session" class="secondary">Nueva conversación</button>
+      <div class="session-box">
+        <span>Sesión actual</span>
+        <code id="session-id"></code>
+      </div>
+      <a class="analytics-link" href="/static/analytics.html">Ver métricas de uso →</a>
+    </aside>
+
+    <section class="chat-panel">
+      <div id="messages" class="messages" aria-live="polite">
+        <article class="message assistant">
+          <div>Hola. Pregúntame sobre productos, servicios o información publicada por el banco.</div>
+        </article>
+      </div>
+      <form id="chat-form" class="composer">
+        <label class="sr-only" for="question">Pregunta</label>
+        <textarea id="question" rows="2" maxlength="2000" placeholder="Escribe una pregunta..." required></textarea>
+        <button id="send" type="submit">Enviar</button>
+      </form>
+      <p class="disclaimer">Las respuestas pueden contener errores. Confirma decisiones importantes en los canales oficiales.</p>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
+
