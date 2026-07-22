@@ -5,7 +5,11 @@ from app.domain.ports import EmbeddingPort, GeneratorPort, VectorStorePort
 
 
 class FakeEmbeddings(EmbeddingPort):
+    def __init__(self) -> None:
+        self.texts = []
+
     async def embed(self, texts: Sequence[str]) -> List[List[float]]:
+        self.texts.extend(texts)
         return [[float(len(text)), 1.0] for text in texts]
 
 
@@ -31,4 +35,3 @@ class FakeVectorStore(VectorStorePort):
             chunk=TextChunk(id="1", url="https://example.com", title="Cuenta", text="La cuenta no tiene cuota.", position=0),
             score=0.8,
         )]
-

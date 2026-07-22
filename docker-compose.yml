@@ -35,7 +35,7 @@ services:
     image: ollama/ollama:0.9.6
     environment:
       OLLAMA_HOST: http://ollama:11434
-      CHAT_MODEL: ${CHAT_MODEL:-llama3.2:3b}
+      CHAT_MODEL: ${CHAT_MODEL:-llama3.2:1b}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
     entrypoint: ["/bin/sh", "-c"]
     command:
@@ -50,4 +50,3 @@ services:
 volumes:
   qdrant_data:
   ollama_data:
-

@@ -19,10 +19,11 @@ class WebsiteScraper:
 
     SKIPPED_SUFFIXES = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".zip", ".mp4", ".xml")
 
-    def __init__(self, store: DocumentStorePort, allowed_domains: List[str], max_pages: int,
-                 delay_seconds: float, timeout_seconds: float) -> None:
+    def __init__(self, store: DocumentStorePort, allowed_domains: List[str], allowed_path_prefix: str,
+                 max_pages: int, delay_seconds: float, timeout_seconds: float) -> None:
         self.store = store
         self.allowed_domains = set(allowed_domains)
+        self.allowed_path_prefix = allowed_path_prefix.rstrip("/") + "/"
         self.max_pages = max_pages
         self.delay_seconds = delay_seconds
         self.timeout_seconds = timeout_seconds
@@ -32,6 +33,7 @@ class WebsiteScraper:
         return (
             parsed.scheme in {"http", "https"}
             and parsed.netloc.lower() in self.allowed_domains
+            and parsed.path.startswith(self.allowed_path_prefix)
             and not parsed.path.lower().endswith(self.SKIPPED_SUFFIXES)
         )
 

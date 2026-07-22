@@ -26,6 +26,10 @@ async def chat(payload: ChatRequest, service: RAGService = Depends(get_rag_servi
         logger.exception("An AI dependency is unavailable")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail="El servicio de IA no está disponible. Verifica Ollama y Qdrant.") from exc
+    except httpx.TimeoutException as exc:
+        logger.exception("An AI dependency timed out")
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                            detail="El modelo tardó demasiado en responder. Intenta nuevamente.") from exc
     except httpx.HTTPStatusError as exc:
         logger.exception("An AI dependency returned an error")
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
@@ -67,4 +71,3 @@ async def ingest() -> dict:
     except Exception as exc:
         logger.exception("Ingestion failed")
         raise HTTPException(status_code=500, detail="No fue posible completar la ingesta.") from exc
-

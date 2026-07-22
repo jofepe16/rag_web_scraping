@@ -36,6 +36,7 @@ def get_ingestion_services():
     providers = ProviderFactory.create(settings)
     scraper = WebsiteScraper(
         store=LocalDocumentStore(), allowed_domains=settings.allowed_domains,
+        allowed_path_prefix=settings.scrape_path_prefix,
         max_pages=settings.scrape_max_pages, delay_seconds=settings.scrape_delay_seconds,
         timeout_seconds=settings.request_timeout_seconds,
     )
@@ -43,4 +44,3 @@ def get_ingestion_services():
         TextChunker(settings.chunk_size, settings.chunk_overlap), providers.embeddings, providers.vectors
     )
     return scraper, indexer
-

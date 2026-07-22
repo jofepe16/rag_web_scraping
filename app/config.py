@@ -1,8 +1,8 @@
 from functools import lru_cache
-from typing import List
+from typing import Annotated, List
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -15,18 +15,19 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://qdrant:6333"
     qdrant_collection: str = "bbva_website"
     ollama_url: str = "http://ollama:11434"
-    chat_model: str = "llama3.2:3b"
+    chat_model: str = "llama3.2:1b"
     embedding_model: str = "nomic-embed-text"
     history_window: int = 6
     chunk_size: int = 900
     chunk_overlap: int = 150
-    retrieval_top_k: int = 8
-    rerank_top_k: int = 4
-    scrape_base_url: str = "https://www.bbva.com.co/"
+    retrieval_top_k: int = 6
+    rerank_top_k: int = 3
+    scrape_base_url: str = "https://www.bbva.com/es/co/"
+    scrape_path_prefix: str = "/es/co/"
     scrape_max_pages: int = 30
     scrape_delay_seconds: float = 0.5
     request_timeout_seconds: float = 20
-    allowed_domains: List[str] = ["bbva.com.co", "www.bbva.com.co"]
+    allowed_domains: Annotated[List[str], NoDecode] = ["bbva.com", "www.bbva.com"]
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -56,4 +57,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

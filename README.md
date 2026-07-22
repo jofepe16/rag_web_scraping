@@ -1,6 +1,6 @@
 # Asistente RAG con web scraping
 
-Solución de la prueba técnica para Machine Learning Engineer / AI Engineer. El sistema extrae contenido público del sitio de BBVA Colombia, conserva los datos crudos y limpios, los indexa en una base vectorial y permite consultarlos desde una interfaz conversacional con fuentes, historial persistente y métricas de uso.
+Solución de la prueba técnica para Machine Learning Engineer / AI Engineer. El sistema extrae contenido público del portal oficial de BBVA para Colombia, conserva los datos crudos y limpios, los indexa en una base vectorial y permite consultarlos desde una interfaz conversacional con fuentes, historial persistente y métricas de uso.
 
 ## Qué incluye
 
@@ -40,7 +40,7 @@ El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`
 |---|---|---|
 | API | FastAPI | Validación, documentación automática y buen soporte asíncrono. |
 | Scraping | HTTPX + Beautiful Soup | Livianos, fáciles de probar y suficientes para páginas HTML renderizadas en servidor. |
-| LLM | Ollama + `llama3.2:3b` | Ejecución local, sin API paga y tamaño razonable para una demostración. |
+| LLM | Ollama + `llama3.2:1b` | Ejecución local, sin API paga y respuesta viable en equipos sin GPU. |
 | Embeddings | Ollama + `nomic-embed-text` | Modelo local y buena integración con el mismo runtime. |
 | Vectores | Qdrant | Open source, persistente y preparado para búsqueda vectorial real. |
 | Historial | SQLite + SQLAlchemy | Persistencia simple, portable y adecuada para una prueba individual. |
@@ -119,11 +119,12 @@ Todos los parámetros relevantes se externalizan en `.env`:
 | `SCRAPE_MAX_PAGES` | `30` | Máximo de páginas por ejecución. |
 | `SCRAPE_DELAY_SECONDS` | `0.5` | Pausa respetuosa entre solicitudes. |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `900` / `150` | Tamaño y solapamiento en caracteres. |
-| `RETRIEVAL_TOP_K` | `8` | Candidatos obtenidos de Qdrant. |
-| `RERANK_TOP_K` | `4` | Fragmentos finales entregados al LLM. |
-| `CHAT_MODEL` | `llama3.2:3b` | Modelo generativo de Ollama. |
+| `RETRIEVAL_TOP_K` | `6` | Candidatos obtenidos de Qdrant. |
+| `RERANK_TOP_K` | `3` | Fragmentos finales entregados al LLM. |
+| `CHAT_MODEL` | `llama3.2:1b` | Modelo generativo de Ollama. |
 | `EMBEDDING_MODEL` | `nomic-embed-text` | Modelo de embeddings. |
-| `SCRAPE_BASE_URL` | BBVA Colombia | Punto de inicio del crawler. |
+| `SCRAPE_BASE_URL` | Portal BBVA Colombia | Punto de inicio del crawler. |
+| `SCRAPE_PATH_PREFIX` | `/es/co/` | Evita recorrer secciones de otros países dentro del portal global. |
 | `ALLOWED_DOMAINS` | dominios BBVA | Lista separada por comas para evitar salir del sitio. |
 
 Si se cambia un modelo, ejecuta nuevamente `docker compose up -d`; `model-init` descargará el modelo configurado.
@@ -172,6 +173,7 @@ Cubren división estable del texto, limpieza HTML, reranking, persistencia/métr
 - SQLite es apropiado para esta entrega, pero múltiples réplicas deberían usar PostgreSQL.
 - La ingesta se ejecuta manualmente para evitar modificar el índice en cada arranque. En producción se programaría y se registrarían versiones del contenido.
 - No hay autenticación porque la prueba pide una interfaz funcional local. Es obligatoria antes de exponer datos internos.
+- La fuente predeterminada es `https://www.bbva.com/es/co/`, porque el sitio comercial `bbva.com.co` devuelve HTTP 403 a clientes automatizados. El portal elegido es oficial y accesible, pero está orientado principalmente a noticias e información corporativa.
 - La calidad depende de las páginas alcanzadas desde la URL inicial y del límite configurado.
 - Las fuentes pueden cambiar después de la ingesta; la respuesta representa la última captura local.
 
@@ -214,4 +216,3 @@ tests/               # Pruebas deterministas
 data/raw/            # HTML original (no versionado)
 data/clean/          # JSON normalizado (no versionado)
 ```
-
