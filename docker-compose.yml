@@ -1,0 +1,53 @@
+services:
+  app:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: sqlite:////app/data/app.db
+      QDRANT_URL: http://qdrant:6333
+      OLLAMA_URL: http://ollama:11434
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      qdrant:
+        condition: service_started
+      model-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.5
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.9.6
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  model-init:
+    image: ollama/ollama:0.9.6
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      CHAT_MODEL: ${CHAT_MODEL:-llama3.2:3b}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until ollama list >/dev/null 2>&1; do sleep 2; done
+        ollama pull "$$CHAT_MODEL"
+        ollama pull "$$EMBEDDING_MODEL"
+    depends_on:
+      - ollama
+    restart: "no"
+
+volumes:
+  qdrant_data:
+  ollama_data:
+
