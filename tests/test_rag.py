@@ -4,7 +4,7 @@ from app.domain.models import ChatTurn
 from app.infrastructure.database import SQLConversationRepository
 from app.services.rag import RAGService
 from app.services.reranking import HybridLexicalReranker
-from tests.fakes import FakeEmbeddings, FakeGenerator, FakeVectorStore
+from tests.fakes import EmptyVectorStore, FakeEmbeddings, FakeGenerator, FakeVectorStore
 
 
 @pytest.mark.asyncio
@@ -37,3 +37,19 @@ async def test_rag_uses_recent_history_for_follow_up_retrieval(tmp_path):
 
     assert "Cuenta Meta" in embeddings.texts[0]
     assert "¿Cuál era el porcentaje?" in embeddings.texts[0]
+
+
+@pytest.mark.asyncio
+async def test_graph_skips_generation_when_there_is_no_evidence(tmp_path):
+    repository = SQLConversationRepository(f"sqlite:///{tmp_path}/test.db")
+    generator = FakeGenerator()
+    service = RAGService(
+        FakeEmbeddings(), generator, EmptyVectorStore(), repository, HybridLexicalReranker(), 4, 5, 2
+    )
+
+    response = await service.ask("abc", "Pregunta sin documentos")
+
+    assert response["sources"] == []
+    assert "No encontré información suficiente" in response["answer"]
+    assert generator.calls == 0
+    assert len(repository.recent_turns("abc", 10)) == 2

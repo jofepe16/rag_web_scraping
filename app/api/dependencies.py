@@ -28,6 +28,7 @@ def get_rag_service() -> RAGService:
         history_window=settings.history_window,
         retrieval_top_k=settings.retrieval_top_k,
         rerank_top_k=settings.rerank_top_k,
+        min_relevance_score=settings.min_relevance_score,
     )
 
 

@@ -27,18 +27,22 @@ flowchart LR
     U[UI / API] --> H[(SQLite historial)]
     U --> E
     Q --> RR[Reranker híbrido]
-    RR --> L[Ollama LLM]
+    RR --> V{¿Hay evidencia?}
+    V -->|Sí| L[Ollama LLM]
+    V -->|No| N[Respuesta controlada]
     H --> L
     L --> U
+    N --> U
 ```
 
-El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`app/services`), adaptadores externos (`app/infrastructure`) y entrada HTTP (`app/api`). Esto permite sustituir Ollama, Qdrant o SQLite sin reescribir la lógica RAG.
+El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`app/services`), adaptadores externos (`app/infrastructure`) y entrada HTTP (`app/api`). LangGraph coordina los nodos `load_history → retrieve → rerank → generate/answer_without_context → persist`. Esto permite sustituir Ollama, Qdrant o SQLite sin reescribir el flujo completo.
 
 ## Stack y decisiones
 
 | Componente | Elección | Motivo |
 |---|---|---|
 | API | FastAPI | Validación, documentación automática y buen soporte asíncrono. |
+| Orquestación RAG | LangGraph | Estado explícito, nodos verificables y decisión condicional según la evidencia. |
 | Scraping | HTTPX + Beautiful Soup | Livianos, fáciles de probar y suficientes para páginas HTML renderizadas en servidor. |
 | LLM | Ollama + `llama3.2:1b` | Ejecución local, sin API paga y respuesta viable en equipos sin GPU. |
 | Embeddings | Ollama + `nomic-embed-text` | Modelo local y buena integración con el mismo runtime. |
@@ -49,6 +53,7 @@ El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`
 ## Requisitos previos
 
 - Docker Desktop o Docker Engine con Docker Compose.
+- Python 3.10 o superior si se ejecutan herramientas fuera de Docker.
 - Al menos 6 GB de memoria disponible y cerca de 5 GB de disco para imágenes y modelos.
 - Conexión a internet en el primer arranque, para descargar imágenes, modelos y contenido público.
 - Los puertos `8000` libres. Qdrant y Ollama no se publican al host por seguridad.
@@ -121,6 +126,7 @@ Todos los parámetros relevantes se externalizan en `.env`:
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `900` / `150` | Tamaño y solapamiento en caracteres. |
 | `RETRIEVAL_TOP_K` | `6` | Candidatos obtenidos de Qdrant. |
 | `RERANK_TOP_K` | `3` | Fragmentos finales entregados al LLM. |
+| `MIN_RELEVANCE_SCORE` | `0.25` | Puntaje mínimo para llamar al LLM; evita responder sin evidencia suficiente. |
 | `CHAT_MODEL` | `llama3.2:1b` | Modelo generativo de Ollama. |
 | `EMBEDDING_MODEL` | `nomic-embed-text` | Modelo de embeddings. |
 | `SCRAPE_BASE_URL` | Portal BBVA Colombia | Punto de inicio del crawler. |
@@ -146,16 +152,17 @@ Estas métricas permiten observar adopción, profundidad de uso y desempeño. En
 3. **Strategy** — `RerankerStrategy` define el algoritmo de reranking y `HybridLexicalReranker` aporta la implementación actual. Puede reemplazarse por un cross-encoder sin modificar `RAGService`.
 4. **Ports and Adapters (arquitectónico)** — los contratos de `app/domain/ports.py` invierten las dependencias entre los casos de uso y Ollama, Qdrant, archivos o SQLite. Mejora las pruebas con dobles locales.
 
+LangGraph no reemplaza estos patrones: actúa como orquestador del caso de uso. La rama condicional evita invocar el modelo cuando no existe evidencia con el puntaje mínimo configurado.
+
 ## Pruebas
 
 Las pruebas no requieren Ollama, Qdrant ni acceso web; usan adaptadores falsos para mantenerlas rápidas y deterministas.
 
 ```bash
-python3 -m pip install -e '.[dev]'
-pytest -q --cov=app
+make test
 ```
 
-Cubren división estable del texto, limpieza HTML, reranking, persistencia/métricas y el flujo RAG con fuentes e historial.
+El comando crea una etapa Docker con las dependencias de desarrollo y ejecuta las pruebas en Python 3.11. Cubren división estable del texto, limpieza HTML, reranking, persistencia/métricas, adaptadores y las rutas del grafo RAG.
 
 ## Manejo de errores y seguridad
 
@@ -190,10 +197,10 @@ Cubren división estable del texto, limpieza HTML, reranking, persistencia/métr
 
 | Lineamiento | Implementación |
 |---|---|
-| Python | Aplicación completa en Python 3.9+. |
+| Python | Aplicación completa en Python 3.10+; contenedor oficial en Python 3.11. |
 | Web scraping | `WebsiteScraper`, crudos y limpios en directorios distintos. |
 | Base vectorial | Qdrant persistente. |
-| Interfaz conversacional | UI web y endpoint `/api/v1/chat`. |
+| Interfaz conversacional | UI web y endpoint `/api/v1/chat`, coordinados con LangGraph. |
 | Historial por ID y N mensajes | SQLite, `session_id` y `HISTORY_WINDOW`. |
 | Dockerización | `Dockerfile` y `docker-compose.yml`; un comando levanta servicios y modelos. |
 | 3 patrones | Repository, Factory, Strategy; adicionalmente Ports and Adapters. |

@@ -16,9 +16,11 @@ class FakeEmbeddings(EmbeddingPort):
 class FakeGenerator(GeneratorPort):
     def __init__(self) -> None:
         self.prompt = ""
+        self.calls = 0
 
     async def generate(self, prompt: str) -> str:
         self.prompt = prompt
+        self.calls += 1
         return "Respuesta basada en [Fuente 1]."
 
 
@@ -35,3 +37,8 @@ class FakeVectorStore(VectorStorePort):
             chunk=TextChunk(id="1", url="https://example.com", title="Cuenta", text="La cuenta no tiene cuota.", position=0),
             score=0.8,
         )]
+
+
+class EmptyVectorStore(FakeVectorStore):
+    async def search(self, vector, limit: int):
+        return []

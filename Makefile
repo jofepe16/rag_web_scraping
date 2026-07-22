@@ -13,5 +13,5 @@ ingest:
 	docker compose exec app python -m app.ingest
 
 test:
-	pytest -q
-
+	docker build --target test -t bbva-rag-tests .
+	docker run --rm bbva-rag-tests

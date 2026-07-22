@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     chunk_overlap: int = 150
     retrieval_top_k: int = 6
     rerank_top_k: int = 3
+    min_relevance_score: float = 0.25
     scrape_base_url: str = "https://www.bbva.com/es/co/"
     scrape_path_prefix: str = "/es/co/"
     scrape_max_pages: int = 30
@@ -51,6 +52,13 @@ class Settings(BaseSettings):
         chunk_size = info.data.get("chunk_size", 900)
         if value < 0 or value >= chunk_size:
             raise ValueError("chunk_overlap must be non-negative and smaller than chunk_size")
+        return value
+
+    @field_validator("min_relevance_score")
+    @classmethod
+    def valid_relevance_score(cls, value: float) -> float:
+        if not 0 <= value <= 1:
+            raise ValueError("min_relevance_score must be between zero and one")
         return value
 
 
