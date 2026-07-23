@@ -45,7 +45,7 @@ El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`
 | Dependencias | uv | Instalación rápida y reproducible a partir de `uv.lock`. |
 | Componentes RAG | LangChain | Fragmentación recursiva e interfaces mantenidas para chat y embeddings de Ollama. |
 | Orquestación RAG | LangGraph | Estado explícito, nodos verificables y decisión condicional según la evidencia. |
-| Scraping | HTTPX + Beautiful Soup | Livianos, fáciles de probar y suficientes para páginas HTML renderizadas en servidor. |
+| Scraping | curl_cffi + Beautiful Soup | Permiten consultar el portal público de BBVA Colombia y limpiar su HTML sin ejecutar un navegador completo. |
 | LLM | Ollama + `llama3.2:1b` | Ejecución local, sin API paga y respuesta viable en equipos sin GPU. |
 | Embeddings | Ollama + `nomic-embed-text` | Modelo local y buena integración con el mismo runtime. |
 | Vectores | Qdrant | Open source, persistente y preparado para búsqueda vectorial real. |
@@ -134,7 +134,7 @@ Todos los parámetros relevantes se externalizan en `.env`:
 | `CHAT_MODEL` | `llama3.2:1b` | Modelo generativo de Ollama. |
 | `EMBEDDING_MODEL` | `nomic-embed-text` | Modelo de embeddings. |
 | `SCRAPE_BASE_URL` | Portal BBVA Colombia | Punto de inicio del crawler. |
-| `SCRAPE_PATH_PREFIX` | `/es/co/` | Evita recorrer secciones de otros países dentro del portal global. |
+| `SCRAPE_PATH_PREFIX` | `/` | Limita el recorrido a las rutas del dominio colombiano configurado. |
 | `ALLOWED_DOMAINS` | dominios BBVA | Lista separada por comas para evitar salir del sitio. |
 
 Si se cambia un modelo, ejecuta nuevamente `docker compose up -d`; `model-init` descargará el modelo configurado.
@@ -185,7 +185,7 @@ El comando crea una etapa Docker con las dependencias de desarrollo y ejecuta la
 - SQLite es apropiado para esta entrega, pero múltiples réplicas deberían usar PostgreSQL.
 - La ingesta se ejecuta manualmente para evitar modificar el índice en cada arranque. En producción se programaría y se registrarían versiones del contenido.
 - No hay autenticación porque la prueba pide una interfaz funcional local. Es obligatoria antes de exponer datos internos.
-- La fuente predeterminada es `https://www.bbva.com/es/co/`, porque el sitio comercial `bbva.com.co` devuelve HTTP 403 a clientes automatizados. El portal elegido es oficial y accesible, pero está orientado principalmente a noticias e información corporativa.
+- La fuente predeterminada es `https://www.bbva.com.co/`. El scraper utiliza un perfil de red compatible con Chrome porque el portal rechaza clientes HTTP básicos, aunque su `robots.txt` permite el rastreo general.
 - La calidad depende de las páginas alcanzadas desde la URL inicial y del límite configurado.
 - Las fuentes pueden cambiar después de la ingesta; la respuesta representa la última captura local.
 

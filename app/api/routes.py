@@ -1,6 +1,7 @@
 import logging
 
 import httpx
+from curl_cffi.requests.errors import RequestsError
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from ollama import RequestError, ResponseError
 
@@ -66,7 +67,7 @@ async def ingest() -> dict:
         documents = await scraper.crawl(settings.scrape_base_url)
         indexed = await indexer.index(documents)
         return {"pages_scraped": len(documents), "chunks_indexed": indexed}
-    except httpx.HTTPError as exc:
+    except (httpx.HTTPError, RequestsError) as exc:
         logger.exception("Falló una dependencia durante la ingesta")
         raise HTTPException(status_code=502, detail="Falló una dependencia durante la ingesta.") from exc
     except Exception as exc:

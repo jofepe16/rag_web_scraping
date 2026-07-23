@@ -22,12 +22,12 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 6
     rerank_top_k: int = 3
     min_relevance_score: float = 0.25
-    scrape_base_url: str = "https://www.bbva.com/es/co/"
-    scrape_path_prefix: str = "/es/co/"
+    scrape_base_url: str = "https://www.bbva.com.co/"
+    scrape_path_prefix: str = "/"
     scrape_max_pages: int = 30
     scrape_delay_seconds: float = 0.5
     request_timeout_seconds: float = 20
-    allowed_domains: Annotated[List[str], NoDecode] = ["bbva.com", "www.bbva.com"]
+    allowed_domains: Annotated[List[str], NoDecode] = ["bbva.com.co", "www.bbva.com.co"]
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

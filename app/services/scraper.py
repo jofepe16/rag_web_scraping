@@ -5,8 +5,9 @@ from typing import List, Set
 from urllib.parse import urldefrag, urljoin, urlparse
 from urllib.robotparser import RobotFileParser
 
-import httpx
 from bs4 import BeautifulSoup
+from curl_cffi.requests import AsyncSession
+from curl_cffi.requests.errors import RequestsError
 
 from app.domain.models import PageDocument
 from app.domain.ports import DocumentStorePort
@@ -52,30 +53,34 @@ class WebsiteScraper:
         queue = deque([start_url])
         visited: Set[str] = set()
         documents: List[PageDocument] = []
-        headers = {"User-Agent": "BBVAContentIndexer/1.0"}
-        async with httpx.AsyncClient(headers=headers, timeout=self.timeout_seconds, follow_redirects=True) as client:
+        robots_user_agent = "BBVAContentIndexer"
+        async with AsyncSession(impersonate="chrome") as client:
             robots = RobotFileParser()
             robots_url = urljoin(start_url, "/robots.txt")
             try:
-                robots_response = await client.get(robots_url)
+                robots_response = await client.get(
+                    robots_url, timeout=self.timeout_seconds, allow_redirects=True
+                )
                 robots_response.raise_for_status()
                 robots.set_url(robots_url)
                 robots.parse(robots_response.text.splitlines())
-            except httpx.HTTPError as exc:
-                logger.warning("Could not read robots.txt; continuing with the bounded crawler: %s", exc)
+            except RequestsError as exc:
+                logger.warning("No se pudo leer robots.txt; continúa el recorrido limitado: %s", exc)
                 robots = None
             while queue and len(visited) < self.max_pages:
                 url = queue.popleft()
                 url, _ = urldefrag(url)
                 if url in visited or not self._is_allowed(url):
                     continue
-                if robots is not None and not robots.can_fetch(headers["User-Agent"], url):
-                    logger.info("robots.txt disallows %s", url)
+                if robots is not None and not robots.can_fetch(robots_user_agent, url):
+                    logger.info("robots.txt no permite consultar %s", url)
                     visited.add(url)
                     continue
                 visited.add(url)
                 try:
-                    response = await client.get(url)
+                    response = await client.get(
+                        url, timeout=self.timeout_seconds, allow_redirects=True
+                    )
                     response.raise_for_status()
                     if "text/html" not in response.headers.get("content-type", ""):
                         continue
@@ -89,8 +94,8 @@ class WebsiteScraper:
                         candidate, _ = urldefrag(urljoin(str(response.url), anchor.get("href", "")))
                         if candidate not in visited and self._is_allowed(candidate):
                             queue.append(candidate)
-                except (httpx.HTTPError, OSError) as exc:
-                    logger.warning("Could not scrape %s: %s", url, exc)
+                except (RequestsError, OSError) as exc:
+                    logger.warning("No se pudo extraer %s: %s", url, exc)
                 if self.delay_seconds:
                     await asyncio.sleep(self.delay_seconds)
         return documents
