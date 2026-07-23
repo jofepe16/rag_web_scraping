@@ -1,19 +1,24 @@
+FROM ghcr.io/astral-sh/uv:0.11.30 AS uv
+
 FROM python:3.11-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
+COPY --from=uv /uv /uvx /bin/
 RUN addgroup --system app && adduser --system --ingroup app app
-COPY pyproject.toml ./
-RUN mkdir -p app && touch app/__init__.py \
-    && pip install --upgrade pip \
-    && pip install .
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --no-install-project
 COPY --chown=app:app app ./app
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --no-editable
 
-RUN mkdir -p /app/data/raw /app/data/clean && chown -R app:app /app
+RUN mkdir -p /app/data/raw /app/data/clean && chown -R app:app /app/data
 USER app
 
 EXPOSE 8000
@@ -25,5 +30,6 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 FROM runtime AS test
 USER root
 COPY tests ./tests
-RUN pip install '.[dev]'
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --extra dev --no-editable
 CMD ["pytest", "-q"]

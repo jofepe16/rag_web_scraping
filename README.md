@@ -42,6 +42,7 @@ El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`
 | Componente | Elección | Motivo |
 |---|---|---|
 | API | FastAPI | Validación, documentación automática y buen soporte asíncrono. |
+| Dependencias | uv | Instalación rápida y reproducible a partir de `uv.lock`. |
 | Componentes RAG | LangChain | Fragmentación recursiva e interfaces mantenidas para chat y embeddings de Ollama. |
 | Orquestación RAG | LangGraph | Estado explícito, nodos verificables y decisión condicional según la evidencia. |
 | Scraping | HTTPX + Beautiful Soup | Livianos, fáciles de probar y suficientes para páginas HTML renderizadas en servidor. |
@@ -60,6 +61,7 @@ El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`
 - Los puertos `8000` libres. Qdrant y Ollama no se publican al host por seguridad.
 
 No se necesitan claves ni APIs de pago.
+`uv` tampoco debe instalarse en el computador: Docker incluye una versión fija dentro de la imagen.
 
 ## Ejecución desde cero
 
