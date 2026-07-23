@@ -2,6 +2,7 @@ import logging
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from ollama import RequestError, ResponseError
 
 from app.api.dependencies import get_ingestion_services, get_rag_service, get_repository
 from app.api.schemas import ChatRequest, ChatResponse, IngestionResponse, MessageResponse
@@ -22,7 +23,7 @@ def health() -> dict:
 async def chat(payload: ChatRequest, service: RAGService = Depends(get_rag_service)) -> dict:
     try:
         return await service.ask(payload.session_id, payload.question.strip())
-    except httpx.ConnectError as exc:
+    except (httpx.ConnectError, RequestError) as exc:
         logger.exception("An AI dependency is unavailable")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail="El servicio de IA no está disponible. Verifica Ollama y Qdrant.") from exc
@@ -30,7 +31,7 @@ async def chat(payload: ChatRequest, service: RAGService = Depends(get_rag_servi
         logger.exception("An AI dependency timed out")
         raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                             detail="El modelo tardó demasiado en responder. Intenta nuevamente.") from exc
-    except httpx.HTTPStatusError as exc:
+    except (httpx.HTTPStatusError, ResponseError) as exc:
         logger.exception("An AI dependency returned an error")
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
                             detail="Un servicio de IA respondió con error.") from exc

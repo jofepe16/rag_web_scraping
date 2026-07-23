@@ -6,7 +6,7 @@ Solución de la prueba técnica para Machine Learning Engineer / AI Engineer. El
 
 - Crawler limitado al dominio configurado, con lectura de `robots.txt`, demora entre solicitudes y límite de páginas.
 - Persistencia local separada para HTML crudo (`data/raw`) y documentos normalizados (`data/clean`).
-- División del texto con solapamiento, embeddings locales e indexación en Qdrant.
+- División del texto con LangChain, embeddings locales e indexación en Qdrant.
 - Recuperación semántica y reranking híbrido (similitud vectorial + coincidencia léxica).
 - Generación local con Ollama y una instrucción que obliga a responder con el contexto recuperado.
 - Historial persistente por `session_id` en SQLite y ventana configurable de N mensajes.
@@ -21,7 +21,7 @@ flowchart LR
     W[Web BBVA] --> S[Scraper]
     S --> R[(HTML crudo)]
     S --> C[(JSON limpio)]
-    C --> K[Chunking]
+    C --> K[LangChain splitter]
     K --> E[Ollama embeddings]
     E --> Q[(Qdrant)]
     U[UI / API] --> H[(SQLite historial)]
@@ -35,13 +35,14 @@ flowchart LR
     N --> U
 ```
 
-El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`app/services`), adaptadores externos (`app/infrastructure`) y entrada HTTP (`app/api`). LangGraph coordina los nodos `load_history → retrieve → rerank → generate/answer_without_context → persist`. Esto permite sustituir Ollama, Qdrant o SQLite sin reescribir el flujo completo.
+El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`app/services`), adaptadores externos (`app/infrastructure`) y entrada HTTP (`app/api`). LangChain aporta el splitter recursivo y las integraciones estándar con Ollama; LangGraph coordina los nodos `load_history → retrieve → rerank → generate/answer_without_context → persist`. Esto permite sustituir Ollama, Qdrant o SQLite sin reescribir el flujo completo.
 
 ## Stack y decisiones
 
 | Componente | Elección | Motivo |
 |---|---|---|
 | API | FastAPI | Validación, documentación automática y buen soporte asíncrono. |
+| Componentes RAG | LangChain | Fragmentación recursiva e interfaces mantenidas para chat y embeddings de Ollama. |
 | Orquestación RAG | LangGraph | Estado explícito, nodos verificables y decisión condicional según la evidencia. |
 | Scraping | HTTPX + Beautiful Soup | Livianos, fáciles de probar y suficientes para páginas HTML renderizadas en servidor. |
 | LLM | Ollama + `llama3.2:1b` | Ejecución local, sin API paga y respuesta viable en equipos sin GPU. |
@@ -152,7 +153,7 @@ Estas métricas permiten observar adopción, profundidad de uso, desempeño y cu
 3. **Strategy** — `RerankerStrategy` define el algoritmo de reranking y `HybridLexicalReranker` aporta la implementación actual. Puede reemplazarse por un cross-encoder sin modificar `RAGService`.
 4. **Ports and Adapters (arquitectónico)** — los contratos de `app/domain/ports.py` invierten las dependencias entre los casos de uso y Ollama, Qdrant, archivos o SQLite. Mejora las pruebas con dobles locales.
 
-LangGraph no reemplaza estos patrones: actúa como orquestador del caso de uso. La rama condicional evita invocar el modelo cuando no existe evidencia con el puntaje mínimo configurado.
+LangChain tampoco reemplaza los patrones propios: se utiliza dentro de los adaptadores y del chunker. LangGraph actúa como orquestador del caso de uso y su rama condicional evita invocar el modelo cuando no existe evidencia con el puntaje mínimo configurado.
 
 ## Pruebas
 
@@ -177,6 +178,7 @@ El comando crea una etapa Docker con las dependencias de desarrollo y ejecuta la
 
 - Solo se procesa HTML disponible en la respuesta inicial. Contenido cargado exclusivamente con JavaScript requeriría Playwright u otra herramienta de navegador.
 - El reranker incluido es híbrido y gratuito; un cross-encoder suele ofrecer mayor precisión, con más consumo y latencia.
+- En equipos sin GPU, una respuesta puede tardar varios minutos mientras Ollama carga el modelo. Se solicita conservarlo 30 minutos, aunque Ollama puede descargarlo si necesita liberar memoria para los embeddings.
 - SQLite es apropiado para esta entrega, pero múltiples réplicas deberían usar PostgreSQL.
 - La ingesta se ejecuta manualmente para evitar modificar el índice en cada arranque. En producción se programaría y se registrarían versiones del contenido.
 - No hay autenticación porque la prueba pide una interfaz funcional local. Es obligatoria antes de exponer datos internos.
@@ -232,7 +234,7 @@ Para entender o sustentar el proyecto conviene seguir una pregunta en este orden
 2. `app/services/rag.py` ejecuta el flujo de LangGraph.
 3. `app/infrastructure/qdrant_store.py` recupera los fragmentos relevantes.
 4. `app/services/reranking.py` reorganiza esos resultados.
-5. `app/infrastructure/ollama.py` genera la respuesta localmente.
+5. `app/infrastructure/ollama.py` utiliza LangChain para embeddings y generación local.
 6. `app/infrastructure/database.py` guarda la conversación y calcula las métricas.
 
-La ingesta es un flujo separado: `scraper.py` obtiene y limpia las páginas, `file_store.py` conserva ambas versiones e `indexing.py` divide, vectoriza e indexa el contenido.
+La ingesta es un flujo separado: `scraper.py` obtiene y limpia las páginas, `file_store.py` conserva ambas versiones e `indexing.py` utiliza el splitter recursivo de LangChain antes de vectorizar e indexar el contenido.

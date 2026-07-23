@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from ollama import RequestError
 
 from app.api.dependencies import get_rag_service, get_repository
 from app.api.routes import router
@@ -17,14 +18,14 @@ class StubRAGService:
         }
 
 
-def build_client(tmp_path) -> TestClient:
+def build_client(tmp_path, rag_service=None) -> TestClient:
     repository = SQLConversationRepository(f"sqlite:///{tmp_path}/api.db")
     repository.add_turn("demo", ChatTurn(role="user", content="Pregunta"))
     repository.add_turn("demo", ChatTurn(role="assistant", content="Respuesta", sources=[]))
 
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[get_rag_service] = lambda: StubRAGService()
+    app.dependency_overrides[get_rag_service] = lambda: rag_service or StubRAGService()
     app.dependency_overrides[get_repository] = lambda: repository
     return TestClient(app)
 
@@ -56,3 +57,19 @@ def test_api_validates_session_and_reads_persisted_metrics(tmp_path):
     assert invalid.status_code == 422
     assert analytics.json()["answers_without_sources"] == 1
     assert conversations.json()["items"][0]["session_id"] == "demo"
+
+
+def test_chat_reports_when_ollama_is_unavailable(tmp_path):
+    class UnavailableRAGService:
+        async def ask(self, session_id: str, question: str):
+            raise RequestError("connection refused")
+
+    client = build_client(tmp_path, UnavailableRAGService())
+
+    response = client.post(
+        "/api/v1/chat",
+        json={"session_id": "web_demo", "question": "Una pregunta"},
+    )
+
+    assert response.status_code == 503
+    assert "no está disponible" in response.json()["detail"]

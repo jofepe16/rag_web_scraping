@@ -1,6 +1,7 @@
-import re
 import uuid
 from typing import Iterable, List
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.domain.models import PageDocument, TextChunk
 from app.domain.ports import EmbeddingPort, VectorStorePort
@@ -12,32 +13,21 @@ class TextChunker:
     def __init__(self, chunk_size: int, overlap: int) -> None:
         if overlap >= chunk_size:
             raise ValueError("overlap must be smaller than chunk_size")
-        self.chunk_size = chunk_size
-        self.overlap = overlap
+        self.splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=overlap,
+            separators=["\n\n", "\n", ". ", " ", ""],
+        )
 
     def split(self, document: PageDocument) -> List[TextChunk]:
-        text = re.sub(r"\n{3,}", "\n\n", document.text).strip()
-        chunks: List[TextChunk] = []
-        start = 0
-        position = 0
-        while start < len(text):
-            end = min(start + self.chunk_size, len(text))
-            if end < len(text):
-                boundary = max(text.rfind(". ", start, end), text.rfind("\n", start, end))
-                if boundary > start + self.chunk_size // 2:
-                    end = boundary + 1
-            content = text[start:end].strip()
-            if content:
-                key = f"{document.url}:{position}:{content}"
-                chunks.append(TextChunk(
-                    id=str(uuid.uuid5(uuid.NAMESPACE_URL, key)), url=document.url,
-                    title=document.title, text=content, position=position,
-                ))
-                position += 1
-            if end >= len(text):
-                break
-            start = max(start + 1, end - self.overlap)
-        return chunks
+        contents = self.splitter.split_text(document.text.strip())
+        return [TextChunk(
+            id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{document.url}:{position}:{content}")),
+            url=document.url,
+            title=document.title,
+            text=content,
+            position=position,
+        ) for position, content in enumerate(contents)]
 
 
 class IndexingService:

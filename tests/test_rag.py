@@ -21,6 +21,7 @@ async def test_rag_answers_with_sources_and_persists_turns(tmp_path):
     assert response["sources"][0]["url"] == "https://example.com"
     assert len(repository.recent_turns("abc", 10)) == 2
     assert "La cuenta no tiene cuota" in generator.prompt
+    assert "no las expandas" in generator.prompt
 
 
 @pytest.mark.asyncio
