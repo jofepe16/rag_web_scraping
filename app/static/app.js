@@ -56,9 +56,15 @@ form.addEventListener("submit", async (event) => {
   } finally { send.disabled = false; question.focus(); }
 });
 
+question.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    if (!send.disabled) form.requestSubmit();
+  }
+});
+
 document.querySelector("#new-session").addEventListener("click", () => {
   sessionId = createSession();
   messages.innerHTML = "";
   appendMessage("assistant", "Nueva conversación iniciada. ¿Qué deseas consultar?");
 });
-
