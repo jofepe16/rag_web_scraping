@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class WebsiteScraper:
-    """Bounded, same-domain crawler that persists both raw and clean content."""
+    """Recorre un número limitado de páginas y guarda su contenido."""
 
     SKIPPED_SUFFIXES = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".zip", ".mp4", ".xml")
 
@@ -52,7 +52,7 @@ class WebsiteScraper:
         queue = deque([start_url])
         visited: Set[str] = set()
         documents: List[PageDocument] = []
-        headers = {"User-Agent": "InetumMLEChallengeBot/1.0 (educational project)"}
+        headers = {"User-Agent": "BBVAContentIndexer/1.0"}
         async with httpx.AsyncClient(headers=headers, timeout=self.timeout_seconds, follow_redirects=True) as client:
             robots = RobotFileParser()
             robots_url = urljoin(start_url, "/robots.txt")

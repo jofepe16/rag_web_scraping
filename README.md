@@ -100,6 +100,7 @@ La ingesta es idempotente respecto a los identificadores de fragmentos: una nuev
 - Documentación API: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 La interfaz crea un identificador de sesión local. “Nueva conversación” genera otro ID; cada uno mantiene su propio historial.
+En el cuadro de texto, `Enter` envía la pregunta y `Shift + Enter` agrega una nueva línea.
 
 Ejemplo por API:
 

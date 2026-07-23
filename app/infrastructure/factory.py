@@ -14,7 +14,7 @@ class AIProviders:
 
 
 class ProviderFactory:
-    """Factory pattern: centralizes construction of replaceable AI providers."""
+    """Centraliza la creación de los proveedores usados por la aplicación."""
 
     @staticmethod
     def create(settings: Settings) -> AIProviders:
@@ -23,4 +23,3 @@ class ProviderFactory:
             generator=OllamaGeneratorAdapter(settings.ollama_url, settings.chat_model),
             vectors=QdrantVectorStore(settings.qdrant_url, settings.qdrant_collection),
         )
-

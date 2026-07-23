@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Runtime configuration loaded from environment variables or a .env file."""
+    """Configuración cargada desde variables de entorno o desde el archivo .env."""
 
     app_name: str = "BBVA Knowledge Assistant"
     log_level: str = "INFO"

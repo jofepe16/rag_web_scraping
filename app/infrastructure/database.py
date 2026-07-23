@@ -36,7 +36,7 @@ class Message(Base):
 
 
 class SQLConversationRepository(ConversationRepositoryPort):
-    """Repository pattern: domain services never depend on SQLAlchemy details."""
+    """Aísla el acceso a SQLAlchemy del resto de la aplicación."""
 
     def __init__(self, database_url: str) -> None:
         if database_url.startswith("sqlite:///"):
@@ -91,7 +91,7 @@ class SQLConversationRepository(ConversationRepositoryPort):
                  "message_count": row.message_count} for row in rows]
 
     def metrics(self) -> dict:
-        """Calculate adoption, performance and answer-coverage metrics from stored messages."""
+        """Calcula métricas de uso y cobertura a partir del historial."""
         with self.session_factory() as db:
             sessions = db.scalar(select(func.count()).select_from(Conversation)) or 0
             messages = db.scalar(select(func.count()).select_from(Message)) or 0

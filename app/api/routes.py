@@ -24,19 +24,19 @@ async def chat(payload: ChatRequest, service: RAGService = Depends(get_rag_servi
     try:
         return await service.ask(payload.session_id, payload.question.strip())
     except (httpx.ConnectError, RequestError) as exc:
-        logger.exception("An AI dependency is unavailable")
+        logger.exception("No fue posible conectar con Ollama o Qdrant")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail="El servicio de IA no está disponible. Verifica Ollama y Qdrant.") from exc
     except httpx.TimeoutException as exc:
-        logger.exception("An AI dependency timed out")
+        logger.exception("Se agotó el tiempo de espera de una dependencia")
         raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                             detail="El modelo tardó demasiado en responder. Intenta nuevamente.") from exc
     except (httpx.HTTPStatusError, ResponseError) as exc:
-        logger.exception("An AI dependency returned an error")
+        logger.exception("Una dependencia respondió con error")
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
                             detail="Un servicio de IA respondió con error.") from exc
     except Exception as exc:
-        logger.exception("Chat processing failed")
+        logger.exception("Falló el procesamiento de la pregunta")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="No fue posible procesar la pregunta.") from exc
 
@@ -67,8 +67,8 @@ async def ingest() -> dict:
         indexed = await indexer.index(documents)
         return {"pages_scraped": len(documents), "chunks_indexed": indexed}
     except httpx.HTTPError as exc:
-        logger.exception("Ingestion dependency failed")
+        logger.exception("Falló una dependencia durante la ingesta")
         raise HTTPException(status_code=502, detail="Falló una dependencia durante la ingesta.") from exc
     except Exception as exc:
-        logger.exception("Ingestion failed")
+        logger.exception("Falló la ingesta")
         raise HTTPException(status_code=500, detail="No fue posible completar la ingesta.") from exc

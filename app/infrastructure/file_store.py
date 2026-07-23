@@ -7,7 +7,7 @@ from app.domain.ports import DocumentStorePort
 
 
 class LocalDocumentStore(DocumentStorePort):
-    """Stores immutable raw HTML and normalized JSON as separate artifacts."""
+    """Guarda por separado el HTML original y el contenido normalizado."""
 
     def __init__(self, raw_dir: str = "data/raw", clean_dir: str = "data/clean") -> None:
         self.raw_dir = Path(raw_dir)
@@ -33,4 +33,3 @@ class LocalDocumentStore(DocumentStorePort):
         self.clean_dir.joinpath(f"{self._key(document.url)}.json").write_text(
             json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-

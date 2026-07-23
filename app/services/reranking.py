@@ -6,7 +6,7 @@ from app.domain.models import SearchResult
 
 
 class RerankerStrategy(ABC):
-    """Strategy pattern contract for interchangeable reranking algorithms."""
+    """Contrato para poder cambiar el algoritmo de reranking."""
 
     @abstractmethod
     def rerank(self, query: str, results: Sequence[SearchResult], limit: int) -> List[SearchResult]:
@@ -14,7 +14,7 @@ class RerankerStrategy(ABC):
 
 
 class HybridLexicalReranker(RerankerStrategy):
-    """Combines vector similarity with token overlap without another paid model."""
+    """Combina la similitud vectorial con coincidencias de palabras."""
 
     @staticmethod
     def _tokens(text: str) -> Set[str]:
@@ -29,4 +29,3 @@ class HybridLexicalReranker(RerankerStrategy):
             score = (0.7 * result.score) + (0.3 * lexical)
             rescored.append(SearchResult(chunk=result.chunk, score=score))
         return sorted(rescored, key=lambda item: item.score, reverse=True)[:limit]
-

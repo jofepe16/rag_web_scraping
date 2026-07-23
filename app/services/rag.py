@@ -9,7 +9,7 @@ from app.services.reranking import RerankerStrategy
 
 
 class RAGState(TypedDict, total=False):
-    """Information shared by the nodes during one question."""
+    """Datos compartidos por los nodos mientras se procesa una pregunta."""
 
     session_id: str
     question: str
@@ -24,7 +24,7 @@ class RAGState(TypedDict, total=False):
 
 
 class RAGService:
-    """Coordinates the conversational RAG workflow through a compiled LangGraph graph."""
+    """Coordina el flujo conversacional mediante un grafo de LangGraph."""
 
     def __init__(self, embeddings: EmbeddingPort, generator: GeneratorPort, vectors: VectorStorePort,
                  conversations: ConversationRepositoryPort, reranker: RerankerStrategy,
