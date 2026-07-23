@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, List
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, create_engine, func, select
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, create_engine, func, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 
 from app.domain.models import ChatTurn
@@ -91,12 +91,24 @@ class SQLConversationRepository(ConversationRepositoryPort):
                  "message_count": row.message_count} for row in rows]
 
     def metrics(self) -> dict:
+        """Calculate adoption, performance and answer-coverage metrics from stored messages."""
         with self.session_factory() as db:
             sessions = db.scalar(select(func.count()).select_from(Conversation)) or 0
             messages = db.scalar(select(func.count()).select_from(Message)) or 0
             user_messages = db.scalar(select(func.count()).select_from(Message).where(Message.role == "user")) or 0
             avg_latency = db.scalar(select(func.avg(Message.latency_ms)).where(Message.role == "assistant"))
             active_days = db.scalar(select(func.count(func.distinct(func.date(Message.created_at))))) or 0
+            answered_with_sources = db.scalar(
+                select(func.count()).select_from(Message).where(
+                    Message.role == "assistant", Message.sources_json != "[]"
+                )
+            ) or 0
+            answered_without_sources = db.scalar(
+                select(func.count()).select_from(Message).where(
+                    Message.role == "assistant", Message.sources_json == "[]"
+                )
+            ) or 0
+            total_answers = answered_with_sources + answered_without_sources
         return {
             "total_sessions": sessions,
             "total_messages": messages,
@@ -104,5 +116,8 @@ class SQLConversationRepository(ConversationRepositoryPort):
             "average_response_latency_ms": round(float(avg_latency or 0), 2),
             "active_days": active_days,
             "average_questions_per_session": round(user_messages / sessions, 2) if sessions else 0,
+            "answers_with_sources": answered_with_sources,
+            "answers_without_sources": answered_without_sources,
+            "source_coverage_percentage": round(answered_with_sources * 100 / total_answers, 2)
+            if total_answers else 0,
         }
-

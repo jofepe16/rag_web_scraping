@@ -2,6 +2,9 @@ const labels = {
   total_sessions: "Sesiones", total_messages: "Mensajes", total_questions: "Preguntas",
   average_response_latency_ms: "Latencia promedio (ms)", active_days: "Días activos",
   average_questions_per_session: "Preguntas por sesión",
+  answers_with_sources: "Respuestas con fuentes",
+  answers_without_sources: "Respuestas sin fuentes",
+  source_coverage_percentage: "Cobertura con fuentes (%)",
 };
 
 Promise.all([fetch("/api/v1/analytics"), fetch("/api/v1/conversations?limit=50")])
@@ -13,4 +16,3 @@ Promise.all([fetch("/api/v1/analytics"), fetch("/api/v1/conversations?limit=50")
     document.querySelector("#sessions").innerHTML = sessions.items.map((session) =>
       `<tr><td><code>${session.session_id}</code></td><td>${session.message_count}</td><td>${new Date(session.updated_at).toLocaleString("es-CO")}</td></tr>`).join("");
   }).catch((error) => { document.querySelector("#metrics").textContent = error.message; });
-

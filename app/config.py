@@ -9,7 +9,6 @@ class Settings(BaseSettings):
     """Runtime configuration loaded from environment variables or a .env file."""
 
     app_name: str = "BBVA Knowledge Assistant"
-    app_env: str = "development"
     log_level: str = "INFO"
     database_url: str = "sqlite:///data/app.db"
     qdrant_url: str = "http://qdrant:6333"

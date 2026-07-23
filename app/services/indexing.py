@@ -7,6 +7,8 @@ from app.domain.ports import EmbeddingPort, VectorStorePort
 
 
 class TextChunker:
+    """Split cleaned pages into stable, overlapping fragments."""
+
     def __init__(self, chunk_size: int, overlap: int) -> None:
         if overlap >= chunk_size:
             raise ValueError("overlap must be smaller than chunk_size")
@@ -39,6 +41,8 @@ class TextChunker:
 
 
 class IndexingService:
+    """Create embeddings in batches and persist them in the vector store."""
+
     def __init__(self, chunker: TextChunker, embeddings: EmbeddingPort, vectors: VectorStorePort,
                  batch_size: int = 32) -> None:
         self.chunker = chunker
@@ -54,4 +58,3 @@ class IndexingService:
             vectors = await self.embeddings.embed([chunk.text for chunk in batch])
             indexed += await self.vectors.index(batch, vectors)
         return indexed
-

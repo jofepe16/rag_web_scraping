@@ -1,8 +1,7 @@
 import time
-from typing import List
+from typing import List, TypedDict
 
 from langgraph.graph import END, START, StateGraph
-from typing_extensions import TypedDict
 
 from app.domain.models import ChatTurn, SearchResult
 from app.domain.ports import ConversationRepositoryPort, EmbeddingPort, GeneratorPort, VectorStorePort
@@ -65,17 +64,20 @@ class RAGService:
         return builder.compile()
 
     def _load_history(self, state: RAGState) -> dict:
+        """Load the configured conversation window and prepare the retrieval query."""
         history = self.conversations.recent_turns(state["session_id"], self.history_window)
         recent_context = " ".join(turn.content for turn in history[-2:])
         retrieval_query = f"{recent_context} {state['question']}".strip()
         return {"history": history, "retrieval_query": retrieval_query}
 
     async def _retrieve(self, state: RAGState) -> dict:
+        """Search Qdrant using the current question and its recent context."""
         query_vector = (await self.embeddings.embed([state["retrieval_query"]]))[0]
         retrieved = await self.vectors.search(query_vector, self.retrieval_top_k)
         return {"retrieved": retrieved}
 
     def _rerank(self, state: RAGState) -> dict:
+        """Prioritize the retrieved fragments before generation."""
         results = self.reranker.rerank(
             state["retrieval_query"], state.get("retrieved", []), self.rerank_top_k
         )
@@ -101,6 +103,7 @@ class RAGService:
         }
 
     def _persist(self, state: RAGState) -> dict:
+        """Store both sides of the exchange and its total latency."""
         latency_ms = round((time.perf_counter() - state["started_at"]) * 1000)
         self.conversations.add_turn(state["session_id"], ChatTurn(role="user", content=state["question"]))
         self.conversations.add_turn(

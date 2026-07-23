@@ -63,8 +63,8 @@ No se necesitan claves ni APIs de pago.
 ## Ejecución desde cero
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
-cd <NOMBRE_DEL_REPOSITORIO>
+git clone https://github.com/jofepe16/rag_web_scraping.git
+cd rag_web_scraping
 cp .env.example .env
 docker compose up --build -d
 ```
@@ -141,9 +141,9 @@ SQLite conserva cada mensaje con rol, fecha, fuentes y latencia. El tablero reco
 
 - `GET /api/v1/conversations`: sesiones paginadas y cantidad de mensajes.
 - `GET /api/v1/conversations/{session_id}`: conversación completa o limitada.
-- `GET /api/v1/analytics`: sesiones, mensajes, preguntas, días activos, latencia media y preguntas por sesión.
+- `GET /api/v1/analytics`: sesiones, mensajes, preguntas, días activos, latencia media y cobertura de respuestas con fuentes.
 
-Estas métricas permiten observar adopción, profundidad de uso y desempeño. En producción se agregarían retroalimentación explícita, resolución de intención, tasa de respuestas sin evidencia y ahorro estimado de tiempo.
+Estas métricas permiten observar adopción, profundidad de uso, desempeño y cuántas respuestas encontraron respaldo en el contenido indexado. En producción se agregarían retroalimentación explícita, resolución de intención y ahorro estimado de tiempo.
 
 ## Patrones de diseño
 
@@ -162,7 +162,7 @@ Las pruebas no requieren Ollama, Qdrant ni acceso web; usan adaptadores falsos p
 make test
 ```
 
-El comando crea una etapa Docker con las dependencias de desarrollo y ejecuta las pruebas en Python 3.11. Cubren división estable del texto, limpieza HTML, reranking, persistencia/métricas, adaptadores y las rutas del grafo RAG.
+El comando crea una etapa Docker con las dependencias de desarrollo y ejecuta las pruebas en Python 3.11. Cubren división estable del texto, limpieza HTML, almacenamiento crudo y limpio, API, reranking, persistencia, métricas, adaptadores y las rutas del grafo RAG.
 
 ## Manejo de errores y seguridad
 
@@ -223,3 +223,16 @@ tests/               # Pruebas deterministas
 data/raw/            # HTML original (no versionado)
 data/clean/          # JSON normalizado (no versionado)
 ```
+
+## Recorrido rápido del código
+
+Para entender o sustentar el proyecto conviene seguir una pregunta en este orden:
+
+1. `app/api/routes.py` recibe y valida la solicitud HTTP.
+2. `app/services/rag.py` ejecuta el flujo de LangGraph.
+3. `app/infrastructure/qdrant_store.py` recupera los fragmentos relevantes.
+4. `app/services/reranking.py` reorganiza esos resultados.
+5. `app/infrastructure/ollama.py` genera la respuesta localmente.
+6. `app/infrastructure/database.py` guarda la conversación y calcula las métricas.
+
+La ingesta es un flujo separado: `scraper.py` obtiene y limpia las páginas, `file_store.py` conserva ambas versiones e `indexing.py` divide, vectoriza e indexa el contenido.
