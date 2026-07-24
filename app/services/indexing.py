@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Iterable, List
 
@@ -5,6 +6,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.domain.models import PageDocument, TextChunk
 from app.domain.ports import EmbeddingPort, VectorStorePort
+
+logger = logging.getLogger(__name__)
 
 
 class TextChunker:
@@ -34,7 +37,7 @@ class IndexingService:
     """Genera embeddings por lotes y los guarda en la base vectorial."""
 
     def __init__(self, chunker: TextChunker, embeddings: EmbeddingPort, vectors: VectorStorePort,
-                 batch_size: int = 32) -> None:
+                 batch_size: int = 128) -> None:
         self.chunker = chunker
         self.embeddings = embeddings
         self.vectors = vectors
@@ -47,4 +50,5 @@ class IndexingService:
             batch = chunks[start:start + self.batch_size]
             vectors = await self.embeddings.embed([chunk.text for chunk in batch])
             indexed += await self.vectors.index(batch, vectors)
+            logger.info("Progreso de indexación: %s de %s fragmentos", indexed, len(chunks))
         return indexed

@@ -2,21 +2,7 @@ import pytest
 import respx
 from httpx import Response
 
-from app.infrastructure.ollama import OllamaEmbeddingAdapter, OllamaGeneratorAdapter
-
-
-@pytest.mark.asyncio
-@respx.mock
-async def test_embedding_adapter_sends_texts_in_one_batch():
-    route = respx.post("http://ollama:11434/api/embed").mock(
-        return_value=Response(200, json={"embeddings": [[1.0, 0.0], [0.0, 1.0]]})
-    )
-    adapter = OllamaEmbeddingAdapter("http://ollama:11434", "nomic-embed-text")
-
-    vectors = await adapter.embed(["primer texto", "segundo texto"])
-
-    assert vectors == [[1.0, 0.0], [0.0, 1.0]]
-    assert route.call_count == 1
+from app.infrastructure.ollama import OllamaGeneratorAdapter
 
 
 @pytest.mark.asyncio

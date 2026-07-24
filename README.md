@@ -4,7 +4,7 @@ Solución de la prueba técnica para Machine Learning Engineer / AI Engineer. El
 
 ## Qué incluye
 
-- Crawler limitado al dominio configurado, con lectura de `robots.txt`, demora entre solicitudes y límite de páginas.
+- Crawler limitado al dominio configurado, con lectura de `robots.txt` y sitemaps, demora entre solicitudes y límite de seguridad.
 - Persistencia local separada para HTML crudo (`data/raw`) y documentos normalizados (`data/clean`).
 - División del texto con LangChain, embeddings locales e indexación en Qdrant.
 - Recuperación semántica y reranking híbrido (similitud vectorial + coincidencia léxica).
@@ -22,7 +22,7 @@ flowchart LR
     S --> R[(HTML crudo)]
     S --> C[(JSON limpio)]
     C --> K[LangChain splitter]
-    K --> E[Ollama embeddings]
+    K --> E[FastEmbed embeddings]
     E --> Q[(Qdrant)]
     U[UI / API] --> H[(SQLite historial)]
     U --> E
@@ -35,7 +35,7 @@ flowchart LR
     N --> U
 ```
 
-El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`app/services`), adaptadores externos (`app/infrastructure`) y entrada HTTP (`app/api`). LangChain aporta el splitter recursivo y las integraciones estándar con Ollama; LangGraph coordina los nodos `load_history → retrieve → rerank → generate/answer_without_context → persist`. Esto permite sustituir Ollama, Qdrant o SQLite sin reescribir el flujo completo.
+El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`app/services`), adaptadores externos (`app/infrastructure`) y entrada HTTP (`app/api`). LangChain aporta el splitter recursivo y la integración de chat con Ollama; LangGraph coordina los nodos `load_history → retrieve → rerank → generate/answer_without_context → persist`. Esto permite sustituir Ollama, FastEmbed, Qdrant o SQLite sin reescribir el flujo completo.
 
 ## Stack y decisiones
 
@@ -43,11 +43,11 @@ El código separa modelos y contratos de dominio (`app/domain`), casos de uso (`
 |---|---|---|
 | API | FastAPI | Validación, documentación automática y buen soporte asíncrono. |
 | Dependencias | uv | Instalación rápida y reproducible a partir de `uv.lock`. |
-| Componentes RAG | LangChain | Fragmentación recursiva e interfaces mantenidas para chat y embeddings de Ollama. |
+| Componentes RAG | LangChain | Fragmentación recursiva e integración mantenida con el chat de Ollama. |
 | Orquestación RAG | LangGraph | Estado explícito, nodos verificables y decisión condicional según la evidencia. |
 | Scraping | curl_cffi + Beautiful Soup | Permiten consultar el portal público de BBVA Colombia y limpiar su HTML sin ejecutar un navegador completo. |
 | LLM | Ollama + `llama3.2:1b` | Ejecución local, sin API paga y respuesta viable en equipos sin GPU. |
-| Embeddings | Ollama + `nomic-embed-text` | Modelo local y buena integración con el mismo runtime. |
+| Embeddings | FastEmbed + MiniLM multilingüe | Inferencia local con ONNX, optimizada para CPU y adecuada para contenido en español. |
 | Vectores | Qdrant | Open source, persistente y preparado para búsqueda vectorial real. |
 | Historial | SQLite + SQLAlchemy | Persistencia simple, portable y adecuada para una prueba individual. |
 | Interfaz | HTML, CSS y JavaScript | Sin framework adicional; reduce dependencias y deja visible el flujo completo. |
@@ -72,7 +72,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Ese comando levanta todos los servicios y descarga los modelos declarados. El primer inicio puede tardar varios minutos. Para revisar el progreso:
+Ese comando levanta todos los servicios y descarga el modelo de chat. El modelo de embeddings se descarga automáticamente durante la primera ingesta y queda guardado en `data/models`. Para revisar el progreso:
 
 ```bash
 docker compose logs -f model-init
@@ -125,14 +125,17 @@ Todos los parámetros relevantes se externalizan en `.env`:
 | Variable | Valor inicial | Uso |
 |---|---:|---|
 | `HISTORY_WINDOW` | `6` | Cantidad máxima de mensajes previos enviados al LLM. |
-| `SCRAPE_MAX_PAGES` | `30` | Máximo de páginas por ejecución. |
+| `SCRAPE_MAX_PAGES` | `1500` | Límite de seguridad; cubre las páginas HTML declaradas actualmente en los sitemaps. |
+| `SCRAPE_CONCURRENCY` | `3` | Máximo de páginas descargadas al mismo tiempo. |
 | `SCRAPE_DELAY_SECONDS` | `0.5` | Pausa respetuosa entre solicitudes. |
-| `CHUNK_SIZE` / `CHUNK_OVERLAP` | `900` / `150` | Tamaño y solapamiento en caracteres. |
+| `CHUNK_SIZE` / `CHUNK_OVERLAP` | `1500` / `200` | Tamaño y solapamiento en caracteres. |
 | `RETRIEVAL_TOP_K` | `6` | Candidatos obtenidos de Qdrant. |
 | `RERANK_TOP_K` | `3` | Fragmentos finales entregados al LLM. |
 | `MIN_RELEVANCE_SCORE` | `0.25` | Puntaje mínimo para llamar al LLM; evita responder sin evidencia suficiente. |
 | `CHAT_MODEL` | `llama3.2:1b` | Modelo generativo de Ollama. |
-| `EMBEDDING_MODEL` | `nomic-embed-text` | Modelo de embeddings. |
+| `EMBEDDING_MODEL` | MiniLM multilingüe | Modelo local utilizado por FastEmbed. |
+| `FASTEMBED_CACHE_PATH` | `data/models/fastembed` | Caché persistente del modelo de embeddings. |
+| `QDRANT_COLLECTION` | `bbva_colombia_website` | Colección donde se guarda el índice vectorial. |
 | `SCRAPE_BASE_URL` | Portal BBVA Colombia | Punto de inicio del crawler. |
 | `SCRAPE_PATH_PREFIX` | `/` | Limita el recorrido a las rutas del dominio colombiano configurado. |
 | `ALLOWED_DOMAINS` | dominios BBVA | Lista separada por comas para evitar salir del sitio. |
@@ -181,11 +184,12 @@ El comando crea una etapa Docker con las dependencias de desarrollo y ejecuta la
 
 - Solo se procesa HTML disponible en la respuesta inicial. Contenido cargado exclusivamente con JavaScript requeriría Playwright u otra herramienta de navegador.
 - El reranker incluido es híbrido y gratuito; un cross-encoder suele ofrecer mayor precisión, con más consumo y latencia.
-- En equipos sin GPU, una respuesta puede tardar varios minutos mientras Ollama carga el modelo. Se solicita conservarlo 30 minutos, aunque Ollama puede descargarlo si necesita liberar memoria para los embeddings.
+- En equipos sin GPU, una respuesta puede tardar varios minutos mientras Ollama carga el modelo generativo. Se solicita conservarlo en memoria durante 30 minutos.
 - SQLite es apropiado para esta entrega, pero múltiples réplicas deberían usar PostgreSQL.
 - La ingesta se ejecuta manualmente para evitar modificar el índice en cada arranque. En producción se programaría y se registrarían versiones del contenido.
 - No hay autenticación porque la prueba pide una interfaz funcional local. Es obligatoria antes de exponer datos internos.
 - La fuente predeterminada es `https://www.bbva.com.co/`. El scraper utiliza un perfil de red compatible con Chrome porque el portal rechaza clientes HTTP básicos, aunque su `robots.txt` permite el rastreo general.
+- La primera ingesta completa recorre más de mil URLs, descarga el modelo de embeddings e indexa miles de fragmentos. En CPU puede tardar entre 20 y 40 minutos; las siguientes ejecuciones reutilizan el modelo local. Para una demostración rápida se puede reducir `SCRAPE_MAX_PAGES` en `.env`.
 - La calidad depende de las páginas alcanzadas desde la URL inicial y del límite configurado.
 - Las fuentes pueden cambiar después de la ingesta; la respuesta representa la última captura local.
 

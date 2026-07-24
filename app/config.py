@@ -12,19 +12,21 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     database_url: str = "sqlite:///data/app.db"
     qdrant_url: str = "http://qdrant:6333"
-    qdrant_collection: str = "bbva_website"
+    qdrant_collection: str = "bbva_colombia_website"
     ollama_url: str = "http://ollama:11434"
     chat_model: str = "llama3.2:1b"
-    embedding_model: str = "nomic-embed-text"
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    fastembed_cache_path: str = "data/models/fastembed"
     history_window: int = 6
-    chunk_size: int = 900
-    chunk_overlap: int = 150
+    chunk_size: int = 1500
+    chunk_overlap: int = 200
     retrieval_top_k: int = 6
     rerank_top_k: int = 3
     min_relevance_score: float = 0.25
     scrape_base_url: str = "https://www.bbva.com.co/"
     scrape_path_prefix: str = "/"
-    scrape_max_pages: int = 30
+    scrape_max_pages: int = 1500
+    scrape_concurrency: int = 3
     scrape_delay_seconds: float = 0.5
     request_timeout_seconds: float = 20
     allowed_domains: Annotated[List[str], NoDecode] = ["bbva.com.co", "www.bbva.com.co"]
@@ -38,7 +40,10 @@ class Settings(BaseSettings):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
-    @field_validator("history_window", "chunk_size", "retrieval_top_k", "rerank_top_k", "scrape_max_pages")
+    @field_validator(
+        "history_window", "chunk_size", "retrieval_top_k", "rerank_top_k",
+        "scrape_max_pages", "scrape_concurrency",
+    )
     @classmethod
     def positive_integer(cls, value: int) -> int:
         if value <= 0:
@@ -48,7 +53,7 @@ class Settings(BaseSettings):
     @field_validator("chunk_overlap")
     @classmethod
     def valid_overlap(cls, value: int, info) -> int:
-        chunk_size = info.data.get("chunk_size", 900)
+        chunk_size = info.data.get("chunk_size", 1500)
         if value < 0 or value >= chunk_size:
             raise ValueError("chunk_overlap must be non-negative and smaller than chunk_size")
         return value

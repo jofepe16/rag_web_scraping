@@ -30,6 +30,10 @@ def test_scraper_stays_inside_domain_and_colombia_path():
     assert scraper._is_allowed("https://www.bbva.com/es/co/economia/")
     assert not scraper._is_allowed("https://www.bbva.com/es/mx/economia/")
     assert not scraper._is_allowed("https://otro-banco.com/es/co/")
+    assert not scraper._is_allowed("https://www.bbva.com/es/co/audio.mp3")
+    assert scraper._normalize_url("https://www.bbva.com.co/cuenta.html?campana=1#detalle") == (
+        "https://www.bbva.com.co/cuenta.html"
+    )
 
 
 @pytest.mark.asyncio
@@ -38,6 +42,7 @@ async def test_scraper_uses_browser_compatible_session(monkeypatch):
         def __init__(self, url, text, content_type):
             self.url = url
             self.text = text
+            self.content = text.encode()
             self.headers = {"content-type": content_type}
 
         def raise_for_status(self):
@@ -56,7 +61,14 @@ async def test_scraper_uses_browser_compatible_session(monkeypatch):
         async def get(self, url, **kwargs):
             assert kwargs == {"timeout": 10, "allow_redirects": True}
             if url.endswith("robots.txt"):
-                return ResponseStub(url, "User-agent: *\nAllow: /", "text/plain")
+                robots = "User-agent: *\nAllow: /\nSitemap: https://www.bbva.com.co/sitemap.xml"
+                return ResponseStub(url, robots, "text/plain")
+            if url.endswith("sitemap.xml"):
+                sitemap = """<?xml version="1.0" encoding="UTF-8"?>
+                <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                  <url><loc>https://www.bbva.com.co/cuentas.html</loc></url>
+                </urlset>"""
+                return ResponseStub(url, sitemap, "text/xml")
             html = "<html><head><title>BBVA</title></head><body><main>" + ("Contenido " * 20) + "</main></body></html>"
             return ResponseStub(url, html, "text/html; charset=UTF-8")
 
@@ -73,10 +85,10 @@ async def test_scraper_uses_browser_compatible_session(monkeypatch):
 
     monkeypatch.setattr(scraper_module, "AsyncSession", SessionStub)
     store = RecordingStore()
-    scraper = WebsiteScraper(store, ["www.bbva.com.co"], "/", 1, 0, 10)
+    scraper = WebsiteScraper(store, ["www.bbva.com.co"], "/", 2, 0, 10)
 
     documents = await scraper.crawl("https://www.bbva.com.co/")
 
-    assert len(documents) == 1
-    assert len(store.raw) == 1
+    assert len(documents) == 2
+    assert len(store.raw) == 2
     assert store.clean[0].title == "BBVA"

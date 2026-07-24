@@ -9,6 +9,7 @@ htmlcov/
 data/raw/*
 data/clean/*
 data/app.db
+data/models/
 !data/raw/.gitkeep
 !data/clean/.gitkeep
 *.docx

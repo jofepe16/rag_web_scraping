@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 from app.config import Settings
 from app.domain.ports import EmbeddingPort, GeneratorPort, VectorStorePort
-from app.infrastructure.ollama import OllamaEmbeddingAdapter, OllamaGeneratorAdapter
+from app.infrastructure.fastembed import FastEmbedEmbeddingAdapter
+from app.infrastructure.ollama import OllamaGeneratorAdapter
 from app.infrastructure.qdrant_store import QdrantVectorStore
 
 
@@ -19,7 +20,9 @@ class ProviderFactory:
     @staticmethod
     def create(settings: Settings) -> AIProviders:
         return AIProviders(
-            embeddings=OllamaEmbeddingAdapter(settings.ollama_url, settings.embedding_model),
+            embeddings=FastEmbedEmbeddingAdapter(
+                settings.embedding_model, settings.fastembed_cache_path
+            ),
             generator=OllamaGeneratorAdapter(settings.ollama_url, settings.chat_model),
             vectors=QdrantVectorStore(settings.qdrant_url, settings.qdrant_collection),
         )

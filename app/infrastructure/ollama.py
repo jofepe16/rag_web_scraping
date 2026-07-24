@@ -1,23 +1,6 @@
-from typing import List, Sequence
+from langchain_ollama import ChatOllama
 
-from langchain_ollama import ChatOllama, OllamaEmbeddings
-
-from app.domain.ports import EmbeddingPort, GeneratorPort
-
-
-class OllamaEmbeddingAdapter(EmbeddingPort):
-    def __init__(self, base_url: str, model: str, timeout: float = 60) -> None:
-        self.client = OllamaEmbeddings(
-            base_url=base_url.rstrip("/"), model=model, client_kwargs={"timeout": timeout}
-        )
-
-    async def embed(self, texts: Sequence[str]) -> List[List[float]]:
-        if not texts:
-            return []
-        vectors = await self.client.aembed_documents(list(texts))
-        if len(vectors) != len(texts):
-            raise RuntimeError("Ollama returned an unexpected number of embeddings")
-        return vectors
+from app.domain.ports import GeneratorPort
 
 
 class OllamaGeneratorAdapter(GeneratorPort):
