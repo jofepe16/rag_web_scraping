@@ -44,6 +44,8 @@ class IndexingService:
         self.batch_size = batch_size
 
     async def index(self, documents: Iterable[PageDocument]) -> int:
+        """Divide, vectoriza e indexa una colección de documentos."""
+
         chunks = [chunk for document in documents for chunk in self.chunker.split(document)]
         indexed = 0
         for start in range(0, len(chunks), self.batch_size):

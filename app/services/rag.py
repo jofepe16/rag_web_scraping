@@ -153,6 +153,8 @@ PREGUNTA: {question}
 RESPUESTA:"""
 
     async def ask(self, session_id: str, question: str) -> dict:
+        """Procesa una pregunta y devuelve respuesta, fuentes y latencia."""
+
         result = await self.graph.ainvoke({
             "session_id": session_id,
             "question": question,

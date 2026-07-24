@@ -232,16 +232,3 @@ tests/               # Pruebas deterministas
 data/raw/            # HTML original (no versionado)
 data/clean/          # JSON normalizado (no versionado)
 ```
-
-## Recorrido rápido del código
-
-Para entender o sustentar el proyecto conviene seguir una pregunta en este orden:
-
-1. `app/api/routes.py` recibe y valida la solicitud HTTP.
-2. `app/services/rag.py` ejecuta el flujo de LangGraph.
-3. `app/infrastructure/qdrant_store.py` recupera los fragmentos relevantes.
-4. `app/services/reranking.py` reorganiza esos resultados.
-5. `app/infrastructure/ollama.py` utiliza LangChain para embeddings y generación local.
-6. `app/infrastructure/database.py` guarda la conversación y calcula las métricas.
-
-La ingesta es un flujo separado: `scraper.py` obtiene y limpia las páginas, `file_store.py` conserva ambas versiones e `indexing.py` utiliza el splitter recursivo de LangChain antes de vectorizar e indexar el contenido.

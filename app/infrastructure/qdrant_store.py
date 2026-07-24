@@ -7,6 +7,8 @@ from app.domain.ports import VectorStorePort
 
 
 class QdrantVectorStore(VectorStorePort):
+    """Guarda y consulta fragmentos vectorizados en Qdrant."""
+
     def __init__(self, url: str, collection: str) -> None:
         self.client = AsyncQdrantClient(url=url)
         self.collection = collection
@@ -48,4 +50,3 @@ class QdrantVectorStore(VectorStorePort):
                 ), score=float(point.score),
             ))
         return results
-

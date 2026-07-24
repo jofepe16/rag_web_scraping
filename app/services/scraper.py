@@ -132,6 +132,8 @@ class WebsiteScraper:
                 await asyncio.sleep(self.delay_seconds)
 
     async def crawl(self, start_url: str) -> List[PageDocument]:
+        """Recorre el sitio configurado y devuelve sus páginas limpias."""
+
         queue = deque([start_url])
         visited: Set[str] = set()
         documents: List[PageDocument] = []

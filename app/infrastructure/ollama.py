@@ -4,6 +4,8 @@ from app.domain.ports import GeneratorPort
 
 
 class OllamaGeneratorAdapter(GeneratorPort):
+    """Genera respuestas locales mediante el modelo configurado en Ollama."""
+
     def __init__(self, base_url: str, model: str, timeout: float = 600) -> None:
         self.client = ChatOllama(
             base_url=base_url.rstrip("/"),
